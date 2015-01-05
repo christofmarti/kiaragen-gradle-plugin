@@ -10,9 +10,11 @@ class KiaragenPluginTest {
         Project project = ProjectBuilder.builder().build()
         project.apply plugin: 'org.fiware.kiara.kiaragen'
 
-        def task = project.tasks.findByName(KiaragenPlugin.KIARAGEN_TASK)
-        assert task instanceof KiaragenTask
-        assert task.sourceDir == project.file("src/main/idl")
-        assert task.outputDir == project.file("$project.buildDir/generated-src/kiara")
+        project.afterEvaluate {
+            def task = project.tasks.findByName(KiaragenPlugin.KIARAGEN_TASK_NAME)
+            assert task instanceof KiaragenTask
+            assert task.sourceDir == project.file("src/main/idl")
+            assert task.outputDir == project.file("$project.buildDir/generated-src/kiara")
+        }
     }
 }

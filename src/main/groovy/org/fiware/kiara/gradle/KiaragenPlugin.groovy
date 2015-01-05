@@ -15,14 +15,23 @@
  */
 package org.fiware.kiara.gradle
 
+import java.io.File;
+import java.util.List;
+
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.plugins.JavaPlugin
+import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.InputDirectory;
+import org.gradle.api.tasks.Optional;
+import org.gradle.api.tasks.OutputDirectory;
 
 class KiaragenPlugin implements Plugin<Project> {
 
-    public static final String KIARAGEN_TASK = 'kiaragen'
+    public static final String KIARAGEN_TASK_NAME = 'kiaragen'
+    static final String KIARAGEN_EXTENSION_NAME = 'kiaragen';
+    static final String GROUP_SOURCE_GENERATION = "Source Generation";
 
     @Override
     void apply(Project project) {
@@ -34,24 +43,54 @@ class KiaragenPlugin implements Plugin<Project> {
             kiaragen 'org.fiware.kiara:kiaragen:0.1.0'
         }
         
-        project.task(KIARAGEN_TASK, type:KiaragenTask) {
-             // add kiaragen as a dependency to the java plugin
-            if (project.plugins.hasPlugin('java'))
-                makeAsDependency(project, this)
-            else {
-                project.plugins.whenPluginAdded { plugin ->
-                    if (plugin instanceof JavaPlugin)
-                        makeAsDependency(project, this)
+        project.extensions.create(KIARAGEN_EXTENSION_NAME, KiaragenExtension)
+        project.afterEvaluate {
+            project.task(KIARAGEN_TASK_NAME, type:KiaragenTask) { kiaragenTask ->
+                description = "Generate Java source files from KIARA idl files"
+                group = GROUP_SOURCE_GENERATION
+                
+                if (project.kiaragen.sourceDir) sourceDir = project.kiaragen.sourceDir
+                if (project.kiaragen.outputDir) outputDir = project.kiaragen.outputDir
+                if (project.kiaragen.platform) platform = project.kiaragen.platform
+                if (project.kiaragen.javaPackage) javaPackage = project.kiaragen.javaPackage
+                if (project.kiaragen.example) example = project.kiaragen.example
+                if (project.kiaragen.ppDisable) ppDisable = project.kiaragen.ppDisable
+                if (project.kiaragen.tempDir) tempDir = project.kiaragen.tempDir
+                if (project.kiaragen.includePaths) includePaths = project.kiaragen.includePaths
+                if (project.kiaragen.idlExtension) idlExtension = project.kiaragen.idlExtension
+                
+                // add kiaragen as a dependency to the java plugin
+                if (project.plugins.hasPlugin(JavaPlugin.class))
+                    this.configureJavaTaskDependency(project, kiaragenTask)
+                else {
+                    project.plugins.whenPluginAdded { plugin ->
+                        if (plugin instanceof JavaPlugin)
+                            this.configureJavaTaskDependency(project, kiaragenTask)
+                    }
                 }
             }
         }
     }
 
-    private void makeAsDependency(Project project, KiaragenTask kiaragen) {
+    private void configureJavaTaskDependency(Project project, KiaragenTask kiaragen) {
         Task compileJava = project.tasks.getByName(JavaPlugin.COMPILE_JAVA_TASK_NAME);
         if (compileJava == null)
             return;
         project.sourceSets.main.java.srcDirs += kiaragen.outputDir
         compileJava.dependsOn kiaragen
     }
+}
+
+class KiaragenExtension {
+    def sourceDir
+    def outputDir
+    String platform 
+    String srcPath
+    String javaPackage
+    boolean example
+    boolean ppDisable
+    String ppPath
+    def tempDir
+    List<String> includePaths = []
+    String idlExtension
 }
